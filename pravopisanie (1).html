@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Орфографический тренажёр · 6 класс</title>
+<style>
+  :root{
+    --pp:#E8833A;   /* пре/при */
+    --po:#14857B;   /* пол/полу */
+    --kk:#3B7DD8;   /* кас/кос */
+    --ink:#23303a;
+    --paper:#fbfaf6;
+    --card:#ffffff;
+    --line:#e7e3d8;
+    --ok:#2E9E5B;
+    --bad:#d9534f;
+    --muted:#6b7682;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:"Segoe UI",-apple-system,Roboto,"Helvetica Neue",Arial,sans-serif;
+    background:var(--paper);color:var(--ink);
+    padding:26px 20px 34px;display:flex;justify-content:center;
+  }
+  .wrap{width:100%;max-width:760px;}
+  h1{font-size:24px;margin:0 0 4px;letter-spacing:.2px;}
+  .sub{color:var(--muted);font-size:14px;margin:0 0 18px;}
+
+  .tabs{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;}
+  .tab{
+    border:1.5px solid var(--line);background:#fff;border-radius:999px;
+    padding:8px 16px;font-size:13.5px;font-weight:600;cursor:pointer;color:#46525c;
+    transition:.15s;font-family:inherit;
+  }
+  .tab:hover{transform:translateY(-1px);}
+  .tab.active{color:#fff;border-color:transparent;}
+  .tab.active[data-f="all"]{background:var(--ink);}
+  .tab.active[data-f="pp"]{background:var(--pp);}
+  .tab.active[data-f="po"]{background:var(--po);}
+  .tab.active[data-f="kk"]{background:var(--kk);}
+
+  .card{
+    background:var(--card);border:1px solid var(--line);border-radius:18px;
+    padding:22px 24px 24px;box-shadow:0 6px 20px rgba(40,50,60,.05);
+  }
+  .topline{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:6px;flex-wrap:wrap;}
+  .progress{font-size:13px;color:var(--muted);font-weight:600;}
+  .score{font-size:13px;color:var(--muted);font-weight:600;}
+  .score b{color:var(--ok);}
+
+  .rule{
+    font-size:13px;line-height:1.6;color:#55616b;background:#f6f4ec;
+    border-left:3px solid var(--line);border-radius:8px;padding:10px 14px;margin:10px 0 18px;
+  }
+  .rule b{color:var(--ink);}
+
+  .wordbox{display:flex;justify-content:center;align-items:center;min-height:96px;margin:6px 0 8px;}
+  .word{font-size:clamp(24px,4.8vw,37px);font-weight:600;line-height:1.35;letter-spacing:.2px;text-align:center;}
+  .gap{
+    display:inline-block;min-width:34px;margin:0 2px;text-align:center;color:var(--muted);
+    border-bottom:3px dashed #c9cdd3;line-height:1;
+  }
+  .ins{font-weight:700;color:var(--ok);}
+  .meaning{display:block;font-size:15px;color:var(--muted);font-weight:500;margin-top:8px;}
+
+  .options{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:14px;}
+  .opt{
+    border:2px solid var(--line);background:#fff;border-radius:14px;
+    padding:12px 24px;font-size:16px;font-weight:700;cursor:pointer;color:#3b454e;
+    transition:.13s;font-family:inherit;min-width:92px;
+  }
+  .opt:hover:not(:disabled){transform:translateY(-1px);border-color:#cfd5db;}
+  .opt:disabled{cursor:default;}
+  .opt.chosen-ok{border-color:var(--ok);background:#e6f4ec;color:var(--ok);}
+  .opt.chosen-bad{border-color:var(--bad);background:#fbe9e8;color:var(--bad);}
+  .opt.reveal{border-color:var(--ok);color:var(--ok);}
+
+  .feedback{margin-top:16px;min-height:20px;text-align:center;}
+  .fmsg{font-size:15px;font-weight:700;margin-bottom:6px;}
+  .fmsg.ok{color:var(--ok);}
+  .fmsg.bad{color:var(--bad);}
+  .why{font-size:14px;color:#55616b;line-height:1.55;max-width:560px;margin:0 auto;}
+  .badge{display:inline-block;font-size:11.5px;font-weight:700;color:#9a6b00;background:#fdf0d2;
+    border:1px solid #f0d79a;border-radius:999px;padding:2px 10px;margin-bottom:8px;letter-spacing:.3px;}
+
+  .navrow{display:flex;justify-content:space-between;align-items:center;margin-top:22px;gap:10px;}
+  .btn{border:none;border-radius:12px;padding:11px 18px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;transition:.15s;}
+  .btn-nav{background:#fff;border:1.5px solid var(--line);color:#56606a;}
+  .btn-nav:hover:not(:disabled){border-color:#cfd5db;}
+  .btn-nav:disabled{opacity:.4;cursor:default;}
+  .btn-ghost{background:#f0eee6;color:#56606a;}
+  .btn-ghost:hover{background:#e7e4da;}
+  .midbtns{display:flex;gap:8px;}
+
+  /* шкала выполнения */
+  .results{background:var(--card);border:1px solid var(--line);border-radius:18px;
+    padding:18px 22px 20px;margin-top:18px;box-shadow:0 6px 20px rgba(40,50,60,.05);}
+  .restitle{font-size:15px;font-weight:700;margin-bottom:14px;color:var(--ink);}
+  .resrow{margin-bottom:14px;}
+  .resrow:last-child{margin-bottom:0;}
+  .reshead{display:flex;justify-content:space-between;font-size:13px;font-weight:600;margin-bottom:6px;color:#55616b;}
+  .reshead .pct{color:var(--ink);}
+  .track{height:11px;border-radius:999px;background:#efece3;overflow:hidden;}
+  .fill{height:100%;border-radius:999px;transition:width .4s ease;}
+  .resrow.total{border-top:1px solid var(--line);padding-top:14px;margin-top:4px;}
+  .resrow.total .reshead{font-size:14px;font-weight:700;color:var(--ink);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Орфографический тренажёр</h1>
+  <p class="sub">6 класс · приставки ПРЕ/ПРИ · ПОЛ/ПОЛУ · чередующийся корень КАС/КОС</p>
+
+  <div class="tabs" id="tabs">
+    <button class="tab active" data-f="all">Все</button>
+    <button class="tab" data-f="pp">ПРЕ / ПРИ</button>
+    <button class="tab" data-f="po">ПОЛ / ПОЛУ</button>
+    <button class="tab" data-f="kk">КАС / КОС</button>
+  </div>
+
+  <div class="card">
+    <div class="topline">
+      <span class="progress" id="progress"></span>
+      <span class="score">Верно: <b id="score">0</b> из <span id="total"></span></span>
+    </div>
+
+    <div class="rule" id="rule"></div>
+
+    <div class="wordbox"><div class="word" id="word"></div></div>
+
+    <div class="options" id="options"></div>
+
+    <div class="feedback" id="feedback"></div>
+
+    <div class="navrow">
+      <button class="btn btn-nav" id="prev">← Назад</button>
+      <div class="midbtns">
+        <button class="btn btn-ghost" id="retry">Ещё раз</button>
+        <button class="btn btn-ghost" id="shuffle">Перемешать</button>
+      </div>
+      <button class="btn btn-nav" id="next">Далее →</button>
+    </div>
+  </div>
+
+  <div class="results" id="results">
+    <div class="restitle">Выполнение</div>
+    <div id="resbars"></div>
+  </div>
+</div>
+
+<script>
+/* cat: pp (пре/при), po (пол/полу), kk (кас/кос)
+   left + vals[i] + right = слово/фраза. opts — подписи кнопок, ans — индекс верного.
+   dict:true — словарное слово (пишется по памяти). meaning — подсказка значения. */
+const D2 = ["при","пре"], V2 = ["при","пре"];          // пре/при
+const KO = ["а","о"], KV = ["а","о"];                   // кас/кос
+const P2 = ["через дефис","слитно"], PV2 = ["-",""];     // пол: дефис/слитно
+const P3 = ["через дефис","слитно","раздельно"], PV3 = ["-",""," "]; // пол: + раздельно
+
+const ITEMS = [
+  // ============ ПРЕ / ПРИ ============
+  {cat:"pp",left:"",right:"бежать",opts:D2,vals:V2,ans:0,why:"ПРИ- — приближение."},
+  {cat:"pp",left:"",right:"морский",opts:D2,vals:V2,ans:0,why:"ПРИ- — близость, «около»."},
+  {cat:"pp",left:"",right:"открыть",opts:D2,vals:V2,ans:0,why:"ПРИ- — неполнота действия."},
+  {cat:"pp",left:"",right:"клеить",opts:D2,vals:V2,ans:0,why:"ПРИ- — присоединение."},
+  {cat:"pp",left:"",right:"лечь",opts:D2,vals:V2,ans:0,why:"ПРИ- — неполнота действия (прилечь ненадолго)."},
+  {cat:"pp",left:"",right:"азовский",opts:D2,vals:V2,ans:0,why:"ПРИ- — близость (около Азовского моря)."},
+  {cat:"pp",left:"",right:"бавлять",opts:D2,vals:V2,ans:0,why:"ПРИ- — присоединение (добавление)."},
+  {cat:"pp",left:"",right:"балтийский",opts:D2,vals:V2,ans:0,why:"ПРИ- — близость (около Балтики)."},
+  {cat:"pp",left:"",right:"бежище",opts:D2,vals:V2,ans:0,why:"ПРИ- — приближение (место, куда прибегают)."},
+  {cat:"pp",left:"",right:"бедняться",opts:D2,vals:V2,ans:0,why:"ПРИ- — оттенок действия (прикидываться бедным)."},
+  {cat:"pp",left:"",right:"берегать",opts:D2,vals:V2,ans:0,why:"ПРИ- — приберечь, сохранить."},
+  {cat:"pp",left:"",right:"бивать",opts:D2,vals:V2,ans:0,why:"ПРИ- — присоединение."},
+  {cat:"pp",left:"",right:"ближаться",opts:D2,vals:V2,ans:0,why:"ПРИ- — приближение."},
+  {cat:"pp",left:"",right:"ободриться",opts:D2,vals:V2,ans:0,why:"ПРИ- — неполнота, оттенок «слегка»."},
+  {cat:"pp",left:"",right:"бытие",opts:D2,vals:V2,ans:0,why:"ПРИ- — приближение (прибыть)."},
+  {cat:"pp",left:"",right:"вал",opts:D2,vals:V2,ans:0,why:"ПРИ- — остановка в пути (привал)."},
+  {cat:"pp",left:"",right:"вертеть",opts:D2,vals:V2,ans:0,why:"ПРИ- — присоединение."},
+  {cat:"pp",left:"",right:"винчивать",opts:D2,vals:V2,ans:0,why:"ПРИ- — присоединение."},
+  {cat:"pp",left:"",right:"влекать",opts:D2,vals:V2,ans:0,why:"ПРИ- — приближение (привлечь к себе)."},
+  {cat:"pp",left:"",right:"водить",opts:D2,vals:V2,ans:0,why:"ПРИ- — приближение."},
+  {cat:"pp",left:"",right:"возной",opts:D2,vals:V2,ans:0,why:"ПРИ- — приближение (привезённый)."},
+  {cat:"pp",left:"",right:"вокзальный",opts:D2,vals:V2,ans:0,why:"ПРИ- — близость (около вокзала)."},
+  {cat:"pp",left:"",right:"вскочить",opts:D2,vals:V2,ans:0,why:"ПРИ- — неполнота, кратковременность."},
+  {cat:"pp",left:"",right:"вязать",opts:D2,vals:V2,ans:0,why:"ПРИ- — присоединение."},
+  {cat:"pp",left:"",right:"гладить",opts:D2,vals:V2,ans:0,why:"ПРИ- — неполнота действия (слегка)."},
+  {cat:"pp",left:"",right:"глядеться",opts:D2,vals:V2,ans:0,why:"ПРИ- — доведение действия (всмотреться)."},
+  {cat:"pp",left:"",right:"гнать",opts:D2,vals:V2,ans:0,why:"ПРИ- — приближение."},
+  {cat:"pp",left:"",right:"гнуться",opts:D2,vals:V2,ans:0,why:"ПРИ- — неполнота действия (слегка)."},
+  {cat:"pp",left:"",right:"городный",opts:D2,vals:V2,ans:0,why:"ПРИ- — близость (около города)."},
+  {cat:"pp",left:"",right:"готовить",opts:D2,vals:V2,ans:0,why:"ПРИ- — доведение действия до конца."},
+  {cat:"pp",left:"",right:"губить",opts:D2,vals:V2,ans:0,why:"ПРИ- — неполнота действия (чуть пригубить)."},
+  {cat:"pp",left:"",right:"двигаться",opts:D2,vals:V2,ans:0,why:"ПРИ- — приближение."},
+  {cat:"pp",left:"",right:"держать",opts:D2,vals:V2,ans:0,why:"ПРИ- — неполнота действия (немного придержать)."},
+  {cat:"pp",left:"",right:"дорожный",opts:D2,vals:V2,ans:0,why:"ПРИ- — близость (около дороги)."},
+  {cat:"pp",left:"",right:"йти",opts:D2,vals:V2,ans:0,why:"ПРИ- — приближение (прийти)."},
+  {cat:"pp",left:"",right:"варить",opts:D2,vals:V2,ans:0,why:"ПРИ- — присоединение."},
+  {cat:"pp",left:"",right:"жимать",opts:D2,vals:V2,ans:0,why:"ПРИ- — приближение/присоединение (прижать)."},
+  {cat:"pp",left:"",right:"земляться",opts:D2,vals:V2,ans:0,why:"ПРИ- — приближение (к земле)."},
+  {cat:"pp",left:"",right:"зывать",opts:D2,vals:V2,ans:0,why:"ПРИ- — призвать к себе."},
+  {cat:"pp",left:"",right:"касаться",opts:D2,vals:V2,ans:0,why:"ПРИ- — приближение (прикоснуться)."},
+  {cat:"pp",left:"",right:"косновение",opts:D2,vals:V2,ans:0,why:"ПРИ- — приближение (прикоснуться)."},
+  {cat:"pp",left:"",right:"луниться",opts:D2,vals:V2,ans:0,why:"ПРИ- — приближение (к Луне)."},
+  {cat:"pp",left:"",right:"мерзать",opts:D2,vals:V2,ans:0,why:"ПРИ- — присоединение (примёрзнуть)."},
+  {cat:"pp",left:"",right:"норовиться",opts:D2,vals:V2,ans:0,why:"ПРИ- — приспособиться (приноровиться)."},
+  {cat:"pp",left:"",right:"слониться",opts:D2,vals:V2,ans:0,why:"ПРИ- — приближение/присоединение."},
+  {cat:"pp",left:"",right:"цепиться",opts:D2,vals:V2,ans:0,why:"ПРИ- — присоединение."},
+  {cat:"pp",left:"",right:"щуриться",opts:D2,vals:V2,ans:0,why:"ПРИ- — неполнота действия (слегка)."},
+  // паронимы при/пре
+  {cat:"pp",left:"",right:"бывать",meaning:"(= приезжать, появляться)",opts:D2,vals:V2,ans:0,why:"ПРИбывать = приезжать. Сравни: ПРЕбывать = находиться где-то. Смысл решает выбор приставки."},
+  {cat:"pp",left:"",right:"бывать",meaning:"(= находиться где-то)",opts:D2,vals:V2,ans:1,why:"ПРЕбывать = находиться, быть где-то. Сравни: ПРИбывать = приезжать."},
+  // ПРЕ (значение «очень» / «=ПЕРЕ-»)
+  {cat:"pp",left:"",right:"красный",opts:D2,vals:V2,ans:1,why:"ПРЕ- = «очень» (очень красивый)."},
+  {cat:"pp",left:"",right:"мудрый",opts:D2,vals:V2,ans:1,why:"ПРЕ- = «очень» (очень мудрый)."},
+  {cat:"pp",left:"",right:"градить",opts:D2,vals:V2,ans:1,why:"ПРЕ- = ПЕРЕ- (преградить = перегородить путь)."},
+  {cat:"pp",left:"",right:"рвать",opts:D2,vals:V2,ans:1,why:"ПРЕ- = ПЕРЕ- (прервать = прекратить)."},
+  {cat:"pp",left:"",right:"восходный",opts:D2,vals:V2,ans:1,why:"ПРЕ- — высокая степень (превзойти, превосходный)."},
+  {cat:"pp",left:"",right:"высить",opts:D2,vals:V2,ans:1,why:"ПРЕ- = «сверх, пере-» (превысить норму)."},
+  {cat:"pp",left:"",right:"града",opts:D2,vals:V2,ans:1,why:"ПРЕ- = ПЕРЕ- (преграда = перегородка)."},
+  {cat:"pp",left:"",right:"ображаться",opts:D2,vals:V2,ans:1,why:"ПРЕ- = ПЕРЕ- (преобразиться)."},
+  {cat:"pp",left:"",right:"отличный",opts:D2,vals:V2,ans:1,why:"ПРЕ- = «очень» (очень отличный)."},
+  {cat:"pp",left:"",right:"серьёзный",opts:D2,vals:V2,ans:1,why:"ПРЕ- = «очень» (очень серьёзный)."},
+  {cat:"pp",left:"",right:"увеличение",opts:D2,vals:V2,ans:1,why:"ПРЕ- = «сверх меры» (увеличить сверх меры)."},
+  // ПРЕ — словарные / различай
+  {cat:"pp",left:"",right:"возмочь",opts:D2,vals:V2,ans:1,dict:true,why:"Словарное слово — запомни написание ПРЕ- (превозмочь)."},
+  {cat:"pp",left:"",right:"вратить",opts:D2,vals:V2,ans:1,dict:true,why:"Словарное слово ПРЕ-. Различай: притворить дверь / претворить мечту."},
+  {cat:"pp",left:"",right:"давать",opts:D2,vals:V2,ans:1,dict:true,why:"Словарное ПРЕ-. Различай: придавать (= добавлять) / предавать (= изменять)."},
+  {cat:"pp",left:"",right:"емственность",opts:D2,vals:V2,ans:1,dict:true,why:"Словарное ПРЕ-. Различай: приёмник (радио) / преемник (наследник)."},
+  {cat:"pp",left:"",right:"зирать",opts:D2,vals:V2,ans:1,dict:true,why:"Словарное ПРЕ-. Различай: призирать (= давать приют) / презирать."},
+  {cat:"pp",left:"",right:"клонение",opts:D2,vals:V2,ans:1,dict:true,why:"Запомни ПРЕ-. Различай: приклонить голову / преклоняться, преклонение."},
+  {cat:"pp",left:"",right:"кращать",opts:D2,vals:V2,ans:1,dict:true,why:"Словарное слово — запомни ПРЕ- (прекращать)."},
+  {cat:"pp",left:"",right:"одолеть",opts:D2,vals:V2,ans:1,dict:true,why:"Словарное слово — запомни ПРЕ- (преодолеть)."},
+  {cat:"pp",left:"",right:"следовать",opts:D2,vals:V2,ans:1,dict:true,why:"Словарное слово — запомни ПРЕ- (преследовать)."},
+  {cat:"pp",left:"",right:"ступление",opts:D2,vals:V2,ans:1,dict:true,why:"Словарное слово — запомни ПРЕ- (преступление, преступить закон)."},
+  {cat:"pp",left:"",right:"терпеть",opts:D2,vals:V2,ans:1,dict:true,why:"Словарное слово — запомни ПРЕ- (претерпеть)."},
+  {cat:"pp",left:"",right:"поднести",opts:D2,vals:V2,ans:1,dict:true,why:"Словарное слово — запомни ПРЕ- (преподнести)."},
+
+  // ============ ПОЛ / ПОЛУ ============
+  {cat:"po",left:"пол",right:"арбуза",opts:P2,vals:PV2,ans:0,why:"ПОЛ- перед гласной → через дефис."},
+  {cat:"po",left:"пол",right:"яблока",opts:P2,vals:PV2,ans:0,why:"ПОЛ- перед гласной → через дефис."},
+  {cat:"po",left:"пол",right:"лимона",opts:P2,vals:PV2,ans:0,why:"ПОЛ- перед буквой Л → через дефис."},
+  {cat:"po",left:"пол",right:"Москвы",opts:P2,vals:PV2,ans:0,why:"ПОЛ- перед заглавной буквой → через дефис."},
+  {cat:"po",left:"пол",right:"стакана",opts:P2,vals:PV2,ans:1,why:"ПОЛ- перед согласной (кроме Л) → слитно."},
+  {cat:"po",left:"пол",right:"дома",opts:P2,vals:PV2,ans:1,why:"ПОЛ- перед согласной → слитно."},
+  {cat:"po",left:"пол",right:"комнаты",opts:P2,vals:PV2,ans:1,why:"ПОЛ- перед согласной → слитно."},
+  {cat:"po",left:"пол",right:"ночи",opts:P2,vals:PV2,ans:1,why:"ПОЛ- перед согласной → слитно."},
+  {cat:"po",left:"полу",right:"месяц",opts:P2,vals:PV2,ans:1,why:"ПОЛУ- всегда пишется слитно."},
+  {cat:"po",left:"полу",right:"остров",opts:P2,vals:PV2,ans:1,why:"ПОЛУ- всегда слитно — даже перед гласной."},
+  {cat:"po",left:"полу",right:"шубок",opts:P2,vals:PV2,ans:1,why:"ПОЛУ- всегда слитно."},
+  {cat:"po",left:"пол",right:"ставки",opts:P2,vals:PV2,ans:1,why:"ПОЛ- перед согласной → слитно."},
+  {cat:"po",left:"пол",right:"Европы",opts:P2,vals:PV2,ans:0,why:"ПОЛ- перед заглавной буквой → через дефис."},
+  {cat:"po",left:"пол",right:"часа",opts:P2,vals:PV2,ans:1,why:"ПОЛ- перед согласной → слитно."},
+  {cat:"po",left:"полу",right:"шёпот",opts:P2,vals:PV2,ans:1,why:"ПОЛУ- всегда слитно."},
+  {cat:"po",left:"пол",right:"тысячи",opts:P2,vals:PV2,ans:1,why:"ПОЛ- перед согласной → слитно."},
+  {cat:"po",left:"пол",right:"граненого стакана",opts:P3,vals:PV3,ans:2,why:"Между ПОЛ и существительным стоит определение → пишем раздельно, в три слова."},
+  {cat:"po",left:"пол",right:"ложки",opts:P2,vals:PV2,ans:0,why:"ПОЛ- перед буквой Л → через дефис."},
+  {cat:"po",left:"пол",right:"килограмма",opts:P2,vals:PV2,ans:1,why:"ПОЛ- перед согласной → слитно."},
+  {cat:"po",left:"пол",right:"литра",opts:P2,vals:PV2,ans:0,why:"ПОЛ- перед буквой Л → через дефис."},
+  {cat:"po",left:"полу",right:"чистый",opts:P2,vals:PV2,ans:1,why:"ПОЛУ- всегда слитно."},
+  {cat:"po",left:"пол",right:"второго",opts:P2,vals:PV2,ans:1,why:"ПОЛ- перед согласной → слитно."},
+  {cat:"po",left:"пол",right:"цены",opts:P2,vals:PV2,ans:1,why:"ПОЛ- перед согласной → слитно."},
+  {cat:"po",left:"пол",right:"России",opts:P2,vals:PV2,ans:0,why:"ПОЛ- перед заглавной буквой → через дефис."},
+  {cat:"po",left:"полу",right:"фабрикат",opts:P2,vals:PV2,ans:1,why:"ПОЛУ- всегда слитно."},
+  {cat:"po",left:"пол",right:"апельсина",opts:P2,vals:PV2,ans:0,why:"ПОЛ- перед гласной → через дефис."},
+  {cat:"po",left:"пол",right:"эмалированного ведра",opts:P3,vals:PV3,ans:2,why:"Между ПОЛ и существительным стоит определение → пишем раздельно, в три слова."},
+  {cat:"po",left:"полу",right:"тон",opts:P2,vals:PV2,ans:1,why:"ПОЛУ- всегда слитно."},
+  {cat:"po",left:"пол",right:"года",opts:P2,vals:PV2,ans:1,why:"ПОЛ- перед согласной → слитно."},
+  {cat:"po",left:"пол",right:"миллиона",opts:P2,vals:PV2,ans:1,why:"ПОЛ- перед согласной → слитно."},
+  {cat:"po",left:"пол",right:"страницы",opts:P2,vals:PV2,ans:1,why:"ПОЛ- перед согласной → слитно."},
+  {cat:"po",left:"пол",right:"листа",opts:P2,vals:PV2,ans:0,why:"ПОЛ- перед буквой Л → через дефис."},
+  {cat:"po",left:"полу",right:"грамотный",opts:P2,vals:PV2,ans:1,why:"ПОЛУ- всегда слитно."},
+  {cat:"po",left:"полу",right:"тяжёлый",opts:P2,vals:PV2,ans:1,why:"ПОЛУ- всегда слитно."},
+  {cat:"po",left:"полу",right:"финальный",opts:P2,vals:PV2,ans:1,why:"ПОЛУ- всегда слитно."},
+  {cat:"po",left:"пол",right:"большой тарелки",opts:P3,vals:PV3,ans:2,why:"Между ПОЛ и существительным стоит определение → пишем раздельно, в три слова."},
+  {cat:"po",left:"пол",right:"порции",opts:P2,vals:PV2,ans:1,why:"ПОЛ- перед согласной → слитно."},
+  {cat:"po",left:"полу",right:"разрушенный",opts:P2,vals:PV2,ans:1,why:"ПОЛУ- всегда слитно."},
+  {cat:"po",left:"пол",right:"очка",opts:P2,vals:PV2,ans:0,why:"ПОЛ- перед гласной → через дефис."},
+  {cat:"po",left:"пол",right:"пути",opts:P2,vals:PV2,ans:1,why:"ПОЛ- перед согласной → слитно."},
+  {cat:"po",left:"пол",right:"смены",opts:P2,vals:PV2,ans:1,why:"ПОЛ- перед согласной → слитно."},
+
+  // ============ КАС / КОС ============
+  {cat:"kk",left:"не к",right:"сайтесь истории",opts:KO,vals:KV,ans:0,why:"После корня есть суффикс -А- → пишем КАС-."},
+  {cat:"kk",left:"к",right:"снусь плиты",opts:KO,vals:KV,ans:1,why:"Суффикса -А- нет → пишем КОС-."},
+  {cat:"kk",left:"к",right:"сательная линия",opts:KO,vals:KV,ans:0,why:"После корня есть суффикс -А- → пишем КАС-."},
+  {cat:"kk",left:"к",right:"сание мяча",opts:KO,vals:KV,ans:0,why:"После корня есть суффикс -А- → пишем КАС-."},
+  {cat:"kk",left:"неприк",right:"сновенный запас",opts:KO,vals:KV,ans:1,why:"Суффикса -А- нет → пишем КОС-."},
+  {cat:"kk",left:"к",right:"снулся ветвями воды",opts:KO,vals:KV,ans:1,why:"Суффикса -А- нет → пишем КОС-."},
+  {cat:"kk",left:"к",right:"саться дна",opts:KO,vals:KV,ans:0,why:"После корня есть суффикс -А- → пишем КАС-."},
+  {cat:"kk",left:"к",right:"саюсь темы разговора",opts:KO,vals:KV,ans:0,why:"После корня есть суффикс -А- → пишем КАС-."},
+  {cat:"kk",left:"к",right:"сались руками воды",opts:KO,vals:KV,ans:0,why:"После корня есть суффикс -А- → пишем КАС-."},
+  {cat:"kk",left:"к",right:"саешься вопроса о поведении",opts:KO,vals:KV,ans:0,why:"После корня есть суффикс -А- → пишем КАС-."},
+  {cat:"kk",left:"к",right:"саясь подробностей",opts:KO,vals:KV,ans:0,why:"После корня есть суффикс -А- → пишем КАС-."},
+  {cat:"kk",left:"к",right:"снётся рукой",opts:KO,vals:KV,ans:1,why:"Суффикса -А- нет → пишем КОС-."},
+  {cat:"kk",left:"соприк",right:"снёшься с искусством",opts:KO,vals:KV,ans:1,why:"Суффикса -А- нет → пишем КОС-."},
+  {cat:"kk",left:"прик",right:"снёмся пальцами",opts:KO,vals:KV,ans:1,why:"Суффикса -А- нет → пишем КОС-."},
+  {cat:"kk",left:"к",right:"снулись важных проблем",opts:KO,vals:KV,ans:1,why:"Суффикса -А- нет → пишем КОС-."},
+];
+
+const REMIND = {
+  pp:"<b>ПРИ-</b>: приближение, присоединение, близость, неполнота действия. &nbsp;<b>ПРЕ-</b>: значение «очень» или равно приставке ПЕРЕ-. &nbsp;Часть слов — словарные, их пишут по памяти.",
+  po:"<b>ПОЛ-</b> + гласная, буква Л или заглавная буква → через дефис. &nbsp;<b>ПОЛ-</b> + согласная → слитно. &nbsp;<b>ПОЛУ-</b> → всегда слитно. &nbsp;Если между ПОЛ и словом есть определение → <b>раздельно</b>, в три слова.",
+  kk:"После корня есть суффикс <b>-А-</b> → пишем <b>КАС-</b>. &nbsp;Суффикса -А- нет → пишем <b>КОС-</b>."
+};
+
+const $ = id => document.getElementById(id);
+const state = ITEMS.map(()=>({chosen:null, correct:false}));
+const CATS = [["pp","ПРЕ / ПРИ","var(--pp)"],["po","ПОЛ / ПОЛУ","var(--po)"],["kk","КАС / КОС","var(--kk)"]];
+let filter = "all";
+let list = [];
+let pos = 0;
+
+function buildList(){
+  list = ITEMS.map((_,i)=>i).filter(i => filter==="all" || ITEMS[i].cat===filter);
+  pos = 0;
+}
+function fullWord(it,i){ return it.left + it.vals[i] + it.right; }
+
+function render(){
+  const ref = list[pos], it = ITEMS[ref], st = state[ref];
+  $("rule").innerHTML = REMIND[it.cat];
+  $("progress").textContent = "Задание " + (pos+1) + " из " + list.length;
+  $("total").textContent = list.length;
+  $("score").textContent = list.filter(i=>state[i].correct).length;
+
+  const word = $("word");
+  const meaning = it.meaning ? `<span class="meaning">${it.meaning}</span>` : "";
+  if(st.chosen===null){
+    word.innerHTML = `${it.left}<span class="gap">?</span>${it.right}${meaning}`;
+  }else{
+    word.innerHTML = `${it.left}<span class="ins">${it.vals[it.ans]}</span>${it.right}${meaning}`;
+  }
+
+  const opts = $("options");
+  opts.innerHTML = "";
+  it.opts.forEach((label,i)=>{
+    const b = document.createElement("button");
+    b.className = "opt";
+    b.textContent = label;
+    if(st.chosen===null){ b.onclick = ()=>answer(i); }
+    else{
+      b.disabled = true;
+      if(i===it.ans) b.classList.add(st.chosen===i ? "chosen-ok" : "reveal");
+      else if(i===st.chosen) b.classList.add("chosen-bad");
+    }
+    opts.appendChild(b);
+  });
+
+  const fb = $("feedback");
+  if(st.chosen===null){ fb.innerHTML = ""; }
+  else{
+    const badge = it.dict ? `<div class="badge">СЛОВАРНОЕ СЛОВО</div>` : "";
+    if(st.correct){
+      fb.innerHTML = `${badge}<div class="fmsg ok">Верно! ✓</div><div class="why">${it.why}</div>`;
+    }else{
+      const wrong = fullWord(it, st.chosen).replace(/\s+/g," ").trim();
+      fb.innerHTML = `${badge}<div class="fmsg bad">Не совсем — вы выбрали «${wrong}».</div><div class="why">${it.why}</div>`;
+    }
+  }
+
+  $("retry").style.visibility = st.chosen===null ? "hidden" : "visible";
+  $("prev").disabled = pos===0;
+  $("next").disabled = pos===list.length-1;
+  updateResults();
+}
+
+function updateResults(){
+  let html = ""; let totDone=0, totAll=0;
+  CATS.forEach(([c,name,col])=>{
+    const idxs = ITEMS.map((it,i)=>it.cat===c?i:-1).filter(i=>i>=0);
+    const done = idxs.filter(i=>state[i].correct).length;
+    const all = idxs.length;
+    totDone += done; totAll += all;
+    const pct = all ? Math.round(done/all*100) : 0;
+    html += `<div class="resrow"><div class="reshead"><span>${name}</span><span class="pct">${pct}% · ${done} из ${all}</span></div>
+      <div class="track"><div class="fill" style="width:${pct}%;background:${col}"></div></div></div>`;
+  });
+  const tpct = totAll ? Math.round(totDone/totAll*100) : 0;
+  html += `<div class="resrow total"><div class="reshead"><span>Итого</span><span class="pct">${tpct}% · ${totDone} из ${totAll}</span></div>
+    <div class="track"><div class="fill" style="width:${tpct}%;background:var(--ink)"></div></div></div>`;
+  $("resbars").innerHTML = html;
+}
+
+function answer(i){
+  const ref = list[pos], it = ITEMS[ref], st = state[ref];
+  st.chosen = i; st.correct = (i===it.ans);
+  render();
+}
+function retry(){ const ref=list[pos]; state[ref].chosen=null; state[ref].correct=false; render(); }
+function go(d){ pos=Math.max(0,Math.min(list.length-1,pos+d)); render(); }
+function shuffle(){ for(let i=list.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [list[i],list[j]]=[list[j],list[i]]; } pos=0; render(); }
+
+document.querySelectorAll(".tab").forEach(t=>{
+  t.onclick=()=>{
+    document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
+    t.classList.add("active");
+    filter = t.dataset.f;
+    buildList(); render();
+  };
+});
+$("prev").onclick=()=>go(-1);
+$("next").onclick=()=>go(1);
+$("retry").onclick=retry;
+$("shuffle").onclick=shuffle;
+
+buildList(); render();
+</script>
+</body>
+</html>
