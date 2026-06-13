@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Разбор слова по составу</title>
+<style>
+  :root{
+    --prefix:#E8833A;   /* приставка */
+    --root:#2E9E5B;     /* корень */
+    --suffix:#3B7DD8;   /* суффикс */
+    --ending:#B5519E;   /* окончание */
+    --postfix:#14857B;  /* постфикс */
+    --link:#C99A1E;     /* соединительная гласная */
+    --lsuf:#6C5CE7;     /* формообр. суффикс -л- */
+    --base:#9aa3ad;     /* основа */
+    --ink:#23303a;
+    --paper:#fbfaf6;
+    --card:#ffffff;
+    --line:#e7e3d8;
+    --ok:#2E9E5B;
+    --bad:#d9534f;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:"Segoe UI",-apple-system,Roboto,"Helvetica Neue",Arial,sans-serif;
+    background:var(--paper);
+    color:var(--ink);
+    padding:26px 20px 34px;
+    display:flex;justify-content:center;
+  }
+  .wrap{width:100%;max-width:880px;}
+  h1{font-size:24px;margin:0 0 4px;letter-spacing:.2px;}
+  .sub{color:#6b7682;font-size:14px;margin:0 0 18px;}
+  .card{
+    background:var(--card);border:1px solid var(--line);border-radius:18px;
+    padding:22px 24px 24px;box-shadow:0 6px 20px rgba(40,50,60,.05);
+  }
+  .topline{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap;}
+  .progress{font-size:13px;color:#6b7682;font-weight:600;}
+  .jump{
+    font-family:inherit;font-size:13px;color:#46525c;background:#fff;
+    border:1.5px solid var(--line);border-radius:10px;padding:6px 10px;cursor:pointer;
+    max-width:200px;
+  }
+  .score{font-size:13px;color:#6b7682;font-weight:600;margin-left:auto;}
+  .score b{color:var(--root);}
+
+  /* legend / brushes */
+  .brushes{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 14px;}
+  .brush{
+    border:1.5px solid var(--line);background:#fff;border-radius:999px;
+    padding:7px 14px 7px 12px;font-size:13.5px;font-weight:600;cursor:pointer;
+    display:flex;align-items:center;gap:8px;color:#46525c;transition:.15s;
+    user-select:none;
+  }
+  .brush:hover{transform:translateY(-1px);}
+  .dot{width:13px;height:13px;border-radius:50%;display:inline-block;}
+  .brush[data-m="prefix"] .dot{background:var(--prefix);}
+  .brush[data-m="root"]    .dot{background:var(--root);}
+  .brush[data-m="suffix"]  .dot{background:var(--suffix);}
+  .brush[data-m="ending"]  .dot{background:var(--ending);}
+  .brush[data-m="postfix"] .dot{background:var(--postfix);}
+  .brush[data-m="link"]    .dot{background:var(--link);}
+  .brush[data-m="lsuf"]    .dot{background:var(--lsuf);}
+  .brush[data-m="erase"]   .dot{background:#cfd5db;}
+  .brush.active{border-width:2px;box-shadow:0 2px 0 rgba(0,0,0,.04);}
+  .brush[data-m="prefix"].active{border-color:var(--prefix);color:var(--prefix);}
+  .brush[data-m="root"].active{border-color:var(--root);color:var(--root);}
+  .brush[data-m="suffix"].active{border-color:var(--suffix);color:var(--suffix);}
+  .brush[data-m="ending"].active{border-color:var(--ending);color:var(--ending);}
+  .brush[data-m="postfix"].active{border-color:var(--postfix);color:var(--postfix);}
+  .brush[data-m="link"].active{border-color:var(--link);color:#9a7714;}
+  .brush[data-m="lsuf"].active{border-color:var(--lsuf);color:var(--lsuf);}
+  .brush[data-m="erase"].active{border-color:#9aa3ad;color:#5a636b;}
+
+  .hint{font-size:13px;color:#8a929b;margin:0 0 6px;}
+  .note{font-size:12.5px;color:#9aa3ad;margin:0 0 16px;line-height:1.6;}
+  .note b{color:#6b7682;}
+
+  /* word */
+  .wordbox{
+    display:flex;justify-content:center;align-items:flex-end;
+    min-height:150px;margin:6px 0 4px;
+  }
+  .word{position:relative;padding-top:42px;padding-bottom:30px;}
+  .letters{display:flex;}
+  .ltr{
+    font-size:46px;font-weight:600;line-height:1;padding:4px 3px;cursor:pointer;
+    color:var(--ink);border-radius:6px;transition:background .12s,color .12s;
+    position:relative;
+  }
+  .ltr:hover{background:#f1efe7;}
+  .ltr.prefix{color:var(--prefix);}
+  .ltr.root{color:var(--root);}
+  .ltr.suffix{color:var(--suffix);}
+  .ltr.ending{color:var(--ending);}
+  .ltr.postfix{color:var(--postfix);}
+  .ltr.link{color:var(--link);}
+  .ltr.lsuf{color:var(--lsuf);}
+  svg.signs{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;overflow:visible;}
+  .zero{
+    font-size:40px;font-weight:600;color:var(--ending);margin-left:2px;
+    align-self:flex-start;margin-top:42px;opacity:.85;
+  }
+
+  /* zero-ending toggle */
+  .zerorow{display:flex;justify-content:center;margin:8px 0 2px;}
+  .ztoggle{
+    border:1.5px dashed var(--ending);color:var(--ending);background:#fff;
+    border-radius:999px;padding:6px 14px;font-size:13px;font-weight:600;cursor:pointer;
+    opacity:.75;transition:.15s;
+  }
+  .ztoggle.on{background:var(--ending);color:#fff;opacity:1;border-style:solid;}
+
+  /* controls */
+  .controls{display:flex;gap:10px;justify-content:center;margin-top:18px;flex-wrap:wrap;}
+  button.btn{
+    border:none;border-radius:12px;padding:11px 20px;font-size:14px;font-weight:600;
+    cursor:pointer;transition:.15s;font-family:inherit;
+  }
+  .btn-primary{background:var(--ink);color:#fff;}
+  .btn-primary:hover{background:#11202a;}
+  .btn-ghost{background:#f0eee6;color:#56606a;}
+  .btn-ghost:hover{background:#e7e4da;}
+  .btn-nav{background:#fff;border:1.5px solid var(--line);color:#56606a;}
+  .btn-nav:hover{border-color:#cfd5db;}
+  .btn-nav:disabled{opacity:.4;cursor:default;}
+
+  /* feedback */
+  .feedback{margin-top:18px;min-height:24px;}
+  .fmsg{font-size:15px;font-weight:600;text-align:center;margin-bottom:8px;}
+  .fmsg.ok{color:var(--ok);}
+  .fmsg.bad{color:var(--bad);}
+  .ftable{display:flex;flex-wrap:wrap;gap:7px;justify-content:center;}
+  .chip{font-size:12.5px;font-weight:600;padding:5px 11px;border-radius:999px;background:#f3f1ea;color:#5a636b;display:flex;gap:6px;align-items:center;}
+  .chip.good{background:#e6f4ec;color:var(--ok);}
+  .chip.miss{background:#fbe9e8;color:var(--bad);}
+
+  .navrow{display:flex;justify-content:space-between;align-items:center;margin-top:20px;}
+  .legend{font-size:11.5px;color:#9aa3ad;text-align:center;margin-top:16px;line-height:1.8;}
+  .legend b{color:#6b7682;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Разбор слова по составу</h1>
+  <p class="sub">6 класс · выдели морфемы: приставку, корень, соединит. гласную, суффикс, окончание и постфикс</p>
+
+  <div class="card">
+    <div class="topline">
+      <span class="progress" id="progress"></span>
+      <select class="jump" id="jump" aria-label="Перейти к слову"></select>
+      <span class="score">Верно разобрано: <b id="score">0</b> из <span id="total"></span></span>
+    </div>
+
+    <div class="brushes" id="brushes">
+      <div class="brush" data-m="prefix"><span class="dot"></span>приставка</div>
+      <div class="brush" data-m="root"><span class="dot"></span>корень</div>
+      <div class="brush" data-m="link"><span class="dot"></span>соединит. гласная</div>
+      <div class="brush" data-m="suffix"><span class="dot"></span>суффикс</div>
+      <div class="brush" data-m="lsuf"><span class="dot"></span>суффикс -л-</div>
+      <div class="brush" data-m="ending"><span class="dot"></span>окончание</div>
+      <div class="brush" data-m="postfix"><span class="dot"></span>постфикс</div>
+      <div class="brush" data-m="erase"><span class="dot"></span>стереть</div>
+    </div>
+    <p class="hint">Выбери морфему сверху, затем нажимай на буквы слова. Повторное нажатие той же кистью — снимает выделение.</p>
+    <p class="note"><b>Помни:</b> у глаголов <b>-ть / -ти</b> отмечаем как окончание. <b>-ся / -сь</b> — это постфикс: он входит в основу, поэтому основа бывает <b>прерывистой</b>. Глагольный <b>-л-</b> прошедшего времени — формообразующий суффикс: отмечаем крышечкой, но в основу он <b>не входит</b>.</p>
+
+    <div class="wordbox">
+      <div class="word" id="word"></div>
+    </div>
+
+    <div class="zerorow">
+      <div class="ztoggle" id="ztoggle">∅ нулевое окончание</div>
+    </div>
+
+    <div class="controls">
+      <button class="btn btn-ghost" id="reset">Сбросить</button>
+      <button class="btn btn-primary" id="check">Проверить</button>
+      <button class="btn btn-ghost" id="show">Показать ответ</button>
+    </div>
+
+    <div class="feedback" id="feedback"></div>
+
+    <div class="navrow">
+      <button class="btn btn-nav" id="prev">← Назад</button>
+      <button class="btn btn-nav" id="next">Далее →</button>
+    </div>
+
+    <div class="legend">
+      <b>Обозначения:</b> приставка ⌐ · корень дуга · соединит. гласная (цвет) · суффикс ∧ · суффикс -л- ∧ (вне основы) · окончание рамка ▭ · постфикс ∧ · основа — линия снизу
+    </div>
+  </div>
+</div>
+
+<script>
+const svgns = "http://www.w3.org/2000/svg";
+
+/* Каждое слово: w — слово, z — нулевое окончание, s — морфемы [тип, начало, конец] (включительно).
+   Типы: prefix, root, suffix, ending, postfix, link (соединительная гласная). */
+const RAW = [
+  // — стартовые 5 слов —
+  {w:"поездка",     z:false, s:[["prefix",0,1],["root",2,4],["suffix",5,5],["ending",6,6]]},
+  {w:"пришкольный", z:false, s:[["prefix",0,2],["root",3,7],["suffix",8,8],["ending",9,10]]},
+  {w:"перелесок",   z:true,  s:[["prefix",0,3],["root",4,6],["suffix",7,8]]},
+  {w:"подводный",   z:false, s:[["prefix",0,2],["root",3,5],["suffix",6,6],["ending",7,8]]},
+  {w:"рассказчик",  z:true,  s:[["prefix",0,2],["root",3,6],["suffix",7,9]]},
+
+  // — задание 14 —
+  {w:"дошкольный",  z:false, s:[["prefix",0,1],["root",2,6],["suffix",7,7],["ending",8,9]]},
+  {w:"затишье",     z:false, s:[["prefix",0,1],["root",2,5],["ending",6,6]]},
+  {w:"грубоватый",  z:false, s:[["root",0,3],["suffix",4,7],["ending",8,9]]},
+  {w:"жариться",    z:false, s:[["root",0,2],["suffix",3,3],["ending",4,5],["postfix",6,7]]},
+  {w:"затворник",   z:true,  s:[["prefix",0,1],["root",2,5],["suffix",6,8]]},
+  {w:"землекоп",    z:true,  s:[["root",0,3],["link",4,4],["root",5,7]]},
+  {w:"бараний",     z:true,  s:[["root",0,4],["suffix",5,6]]},
+  {w:"глазастый",   z:false, s:[["root",0,3],["suffix",4,6],["ending",7,8]]},
+  {w:"впутать",     z:false, s:[["prefix",0,0],["root",1,3],["suffix",4,4],["ending",5,6]]},
+
+  // — задание 15 —
+  {w:"дороговатый", z:false, s:[["root",0,4],["suffix",5,8],["ending",9,10]]},
+  {w:"подъезд",     z:true,  s:[["prefix",0,3],["root",4,6]]},
+  {w:"впрягать",    z:false, s:[["prefix",0,0],["root",1,4],["suffix",5,5],["ending",6,7]]},
+  {w:"жалеть",      z:false, s:[["root",0,2],["suffix",3,3],["ending",4,5]]},
+  {w:"враждебный",  z:false, s:[["root",0,4],["suffix",5,7],["ending",8,9]]},
+  {w:"землемер",    z:true,  s:[["root",0,3],["link",4,4],["root",5,7]]},
+  {w:"бегун",       z:true,  s:[["root",0,2],["suffix",3,4]]},
+  {w:"поросёнок",   z:true,  s:[["root",0,4],["suffix",5,8]]},
+  {w:"посадить",    z:false, s:[["prefix",0,1],["root",2,4],["suffix",5,5],["ending",6,7]]},
+
+  // — задание 16 —
+  {w:"домишко",     z:false, s:[["root",0,2],["suffix",3,5],["ending",6,6]]},
+  {w:"восход",      z:true,  s:[["prefix",0,2],["root",3,5]]},
+  {w:"зайчишка",    z:false, s:[["root",0,3],["suffix",4,6],["ending",7,7]]},
+  {w:"жалкий",      z:false, s:[["root",0,2],["suffix",3,3],["ending",4,5]]},
+  {w:"постельный",  z:false, s:[["root",0,6],["suffix",7,7],["ending",8,9]]},
+  {w:"кровеносный", z:false, s:[["root",0,3],["link",4,4],["root",5,7],["suffix",8,8],["ending",9,10]]},
+  {w:"беглый",      z:false, s:[["root",0,2],["suffix",3,3],["ending",4,5]]},
+  {w:"впускаешь",   z:false, s:[["prefix",0,0],["root",1,4],["suffix",5,5],["ending",6,8]]},
+  {w:"царский",     z:false, s:[["root",0,2],["suffix",3,4],["ending",5,6]]},
+
+  // — задание 17 —
+  {w:"доползти",    z:false, s:[["prefix",0,1],["root",2,5],["ending",6,7]]},
+  {w:"упорядочить", z:false, s:[["prefix",0,0],["root",1,7],["suffix",8,8],["ending",9,10]]},
+  {w:"заползать",   z:false, s:[["prefix",0,1],["root",2,5],["suffix",6,6],["ending",7,8]]},
+  {w:"сжимать",     z:false, s:[["prefix",0,0],["root",1,3],["suffix",4,4],["ending",5,6]]},
+  {w:"задачник",    z:true,  s:[["root",0,4],["suffix",5,7]]},
+  {w:"тополиный",   z:false, s:[["root",0,4],["suffix",5,6],["ending",7,8]]},
+  {w:"баночка",     z:false, s:[["root",0,2],["suffix",3,5],["ending",6,6]]},
+  {w:"пустовать",   z:false, s:[["root",0,3],["suffix",4,6],["ending",7,8]]},
+  {w:"порядочек",   z:true,  s:[["root",0,6],["suffix",7,8]]},
+
+  // — глаголы прошедшего времени (суффикс -л- вне основы) —
+  {w:"прочитала",   z:false, s:[["prefix",0,2],["root",3,5],["suffix",6,6],["lsuf",7,7],["ending",8,8]]},
+  {w:"плавали",     z:false, s:[["root",0,3],["suffix",4,4],["lsuf",5,5],["ending",6,6]]},
+  {w:"смеялись",    z:false, s:[["root",0,2],["suffix",3,3],["lsuf",4,4],["ending",5,5],["postfix",6,7]]},
+];
+
+const COLORS = {prefix:"#E8833A",root:"#2E9E5B",suffix:"#3B7DD8",ending:"#B5519E",postfix:"#14857B",link:"#C99A1E",lsuf:"#6C5CE7",base:"#9aa3ad"};
+const NAMES  = {prefix:"приставка",root:"корень",suffix:"суффикс",ending:"окончание",postfix:"постфикс",link:"соединит. гласная",lsuf:"суффикс -л-"};
+
+// строим эталонный разбор: массив типов по каждой букве
+const WORDS = RAW.map(r=>{
+  const ans = Array(r.w.length).fill("");
+  r.s.forEach(([t,a,b])=>{ for(let i=a;i<=b;i++) ans[i]=t; });
+  return {word:r.w, zero:r.z, ans};
+});
+
+let idx = 0;
+let brush = "root";
+let state = WORDS.map(w => ({assign:Array(w.word.length).fill(""), zero:false, solved:false}));
+
+const $ = id => document.getElementById(id);
+function setEq(a,b){ return a.size===b.size && [...a].every(x=>b.has(x)); }
+
+function renderBrushes(){
+  document.querySelectorAll(".brush").forEach(b=>{
+    b.classList.toggle("active", b.dataset.m===brush);
+    b.onclick=()=>{brush=b.dataset.m; renderBrushes();};
+  });
+}
+
+function renderWord(){
+  const w = WORDS[idx], st = state[idx];
+  const word = $("word");
+  word.innerHTML = "";
+  const letters = document.createElement("div");
+  letters.className = "letters";
+  for(let i=0;i<w.word.length;i++){
+    const sp = document.createElement("span");
+    sp.className = "ltr " + (st.assign[i]||"");
+    sp.textContent = w.word[i];
+    sp.onclick = ()=>paint(i);
+    letters.appendChild(sp);
+  }
+  word.appendChild(letters);
+
+  if(st.zero){
+    const z = document.createElement("span");
+    z.className="zero"; z.textContent="∅";
+    word.appendChild(z);
+  }
+  requestAnimationFrame(()=>drawSigns(letters, word, w, st));
+  $("ztoggle").classList.toggle("on", st.zero);
+  $("progress").textContent = "Слово " + (idx+1) + " из " + WORDS.length;
+  $("jump").value = idx;
+}
+
+function paint(i){
+  const st = state[idx];
+  if(brush==="erase"){ st.assign[i]=""; }
+  else if(st.assign[i]===brush){ st.assign[i]=""; }
+  else { st.assign[i]=brush; }
+  clearFeedback();
+  renderWord();
+}
+
+function groups(assign){
+  const g=[]; let cur=null;
+  for(let i=0;i<assign.length;i++){
+    const m=assign[i];
+    if(m && cur && cur.type===m && i===cur.end+1){ cur.end=i; }
+    else if(m){ cur={type:m,start:i,end:i}; g.push(cur); }
+    else cur=null;
+  }
+  return g;
+}
+
+function drawSigns(letters, word, w, st){
+  const old = word.querySelector("svg.signs"); if(old) old.remove();
+  const wb = word.getBoundingClientRect();
+  const spans = letters.querySelectorAll(".ltr");
+  if(!spans.length) return;
+  const svg = document.createElementNS(svgns,"svg");
+  svg.setAttribute("class","signs");
+  const topY = 30;
+
+  // ОСНОВА: подчёркиваем всё, кроме окончания.
+  // Постфикс (-ся/-сь) и соединит. гласная входят в основу, поэтому
+  // основа может быть прерывистой — рисуем её отдельными отрезками.
+  const baseIdx = [];
+  for(let i=0;i<w.word.length;i++){ const t=st.assign[i]; if(t !== "ending" && t !== "lsuf") baseIdx.push(i); }
+  const runs = []; let run = null;
+  baseIdx.forEach(i=>{ if(run && i===run[run.length-1]+1) run.push(i); else { run=[i]; runs.push(run); } });
+  let maxBottom = 0;
+  spans.forEach(s=>{ const r=s.getBoundingClientRect(); if(r.bottom>maxBottom) maxBottom=r.bottom; });
+  const baseY = maxBottom - wb.top + 8;
+  runs.forEach(rn=>{
+    const a=spans[rn[0]].getBoundingClientRect(), b=spans[rn[rn.length-1]].getBoundingClientRect();
+    svg.appendChild(line(a.left-wb.left+2, baseY, b.right-wb.left-2, baseY, COLORS.base, 2));
+  });
+
+  // надстрочные знаки
+  const g = groups(st.assign);
+  g.forEach(grp=>{
+    const a=spans[grp.start].getBoundingClientRect(), b=spans[grp.end].getBoundingClientRect();
+    const x1=a.left-wb.left+1, x2=b.right-wb.left-1, mid=(x1+x2)/2;
+    const c=COLORS[grp.type];
+    if(grp.type==="prefix"){             // ⌐
+      svg.appendChild(path(`M${x1} ${topY} L${x2} ${topY} L${x2} ${topY+9}`, c));
+    } else if(grp.type==="root"){        // дуга
+      svg.appendChild(path(`M${x1} ${topY+6} Q${mid} ${topY-12} ${x2} ${topY+6}`, c));
+    } else if(grp.type==="suffix" || grp.type==="postfix" || grp.type==="lsuf"){  // крышечка ∧
+      svg.appendChild(path(`M${x1} ${topY+6} L${mid} ${topY-8} L${x2} ${topY+6}`, c));
+    } else if(grp.type==="ending"){      // рамка
+      const top=a.top-wb.top-3, bot=b.bottom-wb.top+3;
+      svg.appendChild(rect(x1-2, top, (x2-x1)+4, bot-top, c));
+    }
+    // link (соединит. гласная): без надстрочного знака — только цвет буквы
+  });
+  word.appendChild(svg);
+}
+function path(d,c){const p=document.createElementNS(svgns,"path");p.setAttribute("d",d);p.setAttribute("fill","none");p.setAttribute("stroke",c);p.setAttribute("stroke-width","2.4");p.setAttribute("stroke-linecap","round");p.setAttribute("stroke-linejoin","round");return p;}
+function line(x1,y1,x2,y2,c,wd){const l=document.createElementNS(svgns,"line");l.setAttribute("x1",x1);l.setAttribute("y1",y1);l.setAttribute("x2",x2);l.setAttribute("y2",y2);l.setAttribute("stroke",c);l.setAttribute("stroke-width",wd);l.setAttribute("stroke-linecap","round");return l;}
+function rect(x,y,w,h,c){const r=document.createElementNS(svgns,"rect");r.setAttribute("x",x);r.setAttribute("y",y);r.setAttribute("width",w);r.setAttribute("height",h);r.setAttribute("rx",4);r.setAttribute("fill","none");r.setAttribute("stroke",c);r.setAttribute("stroke-width","2.2");return r;}
+
+function clearFeedback(){ $("feedback").innerHTML=""; }
+function chip(good,label){ return `<span class="chip ${good?'good':'miss'}">${good?'✓':'✗'} ${label}</span>`; }
+
+function check(){
+  const w=WORDS[idx], st=state[idx];
+  const types=["prefix","root","link","suffix","lsuf","ending","postfix"];
+  const chips=[]; let allGood=true;
+
+  types.forEach(t=>{
+    const ansSet=new Set(); w.ans.forEach((m,i)=>{ if(m===t) ansSet.add(i); });
+    const gotSet=new Set(); st.assign.forEach((m,i)=>{ if(m===t) gotSet.add(i); });
+
+    if(t==="ending"){
+      let good;
+      if(w.zero){ good = gotSet.size===0 && st.zero; }
+      else      { good = setEq(ansSet,gotSet) && !st.zero; }
+      if(!good) allGood=false;
+      chips.push(chip(good, NAMES.ending + (w.zero?" (∅)":"")));
+      return;
+    }
+    // показываем фишку, если морфема есть в ответе ИЛИ ученик что-то ей закрасил
+    if(ansSet.size===0 && gotSet.size===0) return;
+    const good = setEq(ansSet,gotSet);
+    if(!good) allGood=false;
+    chips.push(chip(good, NAMES[t]));
+  });
+
+  const fb=$("feedback");
+  if(allGood){
+    if(!st.solved){ st.solved=true; updateScore(); }
+    fb.innerHTML=`<div class="fmsg ok">Отлично! Слово разобрано верно 🎉</div>`;
+  } else {
+    fb.innerHTML=`<div class="fmsg bad">Почти! Проверь отмеченные морфемы.</div><div class="ftable">${chips.join("")}</div>`;
+  }
+}
+
+function showAnswer(){
+  const w=WORDS[idx], st=state[idx];
+  st.assign = w.ans.slice();
+  st.zero = w.zero;
+  renderWord();
+  $("feedback").innerHTML=`<div class="fmsg" style="color:#6b7682">Это правильный разбор. Попробуй следующее слово сам 💪</div>`;
+}
+
+function reset(){
+  const w=WORDS[idx];
+  state[idx]={assign:Array(w.word.length).fill(""), zero:false, solved:state[idx].solved};
+  clearFeedback(); renderWord();
+}
+
+function updateScore(){ $("score").textContent = state.filter(s=>s.solved).length; }
+
+function go(d){ idx=Math.max(0,Math.min(WORDS.length-1, idx+d)); clearFeedback(); renderWord(); updateNav(); }
+function updateNav(){ $("prev").disabled=idx===0; $("next").disabled=idx===WORDS.length-1; }
+
+$("check").onclick=check;
+$("reset").onclick=reset;
+$("show").onclick=showAnswer;
+$("prev").onclick=()=>go(-1);
+$("next").onclick=()=>go(1);
+$("ztoggle").onclick=()=>{ state[idx].zero=!state[idx].zero; clearFeedback(); renderWord(); };
+window.addEventListener("resize", ()=>renderWord());
+
+// выпадающий список для быстрого перехода к слову
+const jump=$("jump");
+WORDS.forEach((w,i)=>{ const o=document.createElement("option"); o.value=i; o.textContent=(i+1)+". "+w.word; jump.appendChild(o); });
+jump.onchange=()=>{ idx=parseInt(jump.value,10); clearFeedback(); renderWord(); updateNav(); };
+
+$("total").textContent=WORDS.length;
+renderBrushes(); updateScore(); updateNav(); renderWord();
+</script>
+</body>
+</html>
